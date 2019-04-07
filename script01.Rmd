@@ -62,10 +62,11 @@ This document is written as an [R Notebook](https://bookdown.org/yihui/rmarkdown
 
 An R Notebook is a document with chunks that can be executed independently and interactively, with output visible immediately beneath the input. The text is formatted using [R Markdown](https://rmarkdown.rstudio.com/authoring_basics.html).
 
+# Quick data.table primer
 
-# Long vs wide format
+`Data.table` package is a faster, more efficient [framework](https://cran.r-project.org/web/packages/data.table/vignettes/datatable-intro.html) for data manipulation compared to R's standard `data.frame`. It provides a consistent syntax for subsetting, grouping, updating, merging, etc. 
 
-## Define data
+Let's define a data table:
 
 ```{r}
 dtBabies = data.table(name= c("Jackson Smith", "Emma Williams", "Liam Brown", "Ava Wilson"), 
@@ -79,12 +80,68 @@ dtBabies
 
 ```
 
-## Summarise
 
-```{r}
-summary(dtBabies)
+## General form
+
+The general form of data.table syntax is as follows:
+
+```
+DT[i, j, by]
+
+##   R:                 i                 j        by
+## SQL:  where | order by   select | update  group by
 ```
 
+**The way to read it (out loud) is:**
+
+Take DT, subset/reorder rows using i, then calculate j, grouped by by.
+
+Let’s select specific records from our data table:
+
+```{r}
+dtBabies[gender == 'M']
+```
+
+Let’s select specific columns from our data table:
+```{r}
+dtBabies[, .(name, gender, year2015)]
+```
+
+Calculate the mean of a column:
+
+```{r}
+dtBabies[, .(meanWeight = mean(year2015))]
+```
+
+Calculate the mean of a column by gender:
+
+```{r}
+dtBabies[, .(meanWeight = mean(year2015)), by = gender]
+
+```
+
+## Reference columns by name
+
+In the above example, you have propbably noticed that column names are given explicitly. Hardcoding them this way in the script is potentially dangerous, for example when for some reason column names change. A much handier way would be to store the column names somewhere at the beginning of the script, where it's easy to change them, and then use variables with those names in the code. 
+
+```{r}
+lCol = list()
+lCol$meas = 'weight'
+lCol$time = 'year'
+lCol$group = c('name', 'gender')
+lCol$timeLast = 'year2015'
+
+lCol
+```
+
+Now, we can perform the same summary with `data.table` but we'll provide column names stored as strings in elements of the list `lCol`. The `j` part of the `data.table` requires us to use a function `get` to interpret the string as the column name.
+
+```{r}
+dtBabies[, .(meanWeight = mean(get(lCol$timeLast))), by = c(lCol$group[2])]
+
+```
+
+# Long vs wide format
 
 ## Wide to long
 
@@ -121,20 +178,13 @@ dtBabiesWide
 
 ```
 
-# Reference columns by name
+## Reference columns by name
 
-In the above example, you've noticed that the formula interface of `dcast` requires providing column names explicitly. Hardcoding them this way in the script is potentially dangerous, for example when column names change for some reason. A much handier way would be to store the column names somewhere at the beginning of the script, wherer it's easy to change them, and then use variables with those names in the code. 
+In the above example, you've noticed that the formula interface of `dcast` requires providing column names explicitly. As was the case with `data.table`, it is a good programming practice to avoid hard-coding column names at multiple points in the code.
 
-```{r}
-lCol = list()
-lCol$meas = 'weight'
-lCol$time = 'year'
-lCol$group = c('name', 'gender')
+We will use the `lCol` list with column names, we will build a string with the formula, and we will provide it to `dcast` function as the formula argument.
 
-lCol
-```
-
-Now we build a string from column names stored in lCol list using `paste0` function:
+We build a string from column names stored in lCol list using `paste0` function:
 
 ```{r}
 sFormula = paste0(lCol$group[1], '+', lCol$group[2], '~', lCol$time)
@@ -169,7 +219,9 @@ Here we add `group` option in the `ggplot` aesthetics (`aes`) to avoid the mista
 
 Also, to avoid hard-coding column names we use `aes_string` instead of `aes`. 
 
-In order to produce facets per `gender`, we use function `facet_wrap`. It uses formula interface, same as in case of `dcast`, hence we need to build the formula from s string.
+The data will be plotted as lines, with additional dots to indicate data points, and with the summary mean of the group.
+
+In order to produce facets per `gender`, we use function `facet_wrap`. It uses formula interface, same as in the case of `dcast`. Again, we need to build the formula from a string.
 
 ```{r}
 sFormula2 = paste0('~', lCol$group[2])
@@ -181,11 +233,14 @@ sFormula2
 p1 = ggplot2::ggplot(dtBabiesLong, aes_string(x = lCol$time, y = lCol$meas, group = lCol$group[1])) +
   geom_line() +
   geom_point() +
+  stat_summary(fun.y = mean, aes(group=1), geom = "line", colour = 'red') +
   facet_wrap(as.formula(sFormula2)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 p1
 ```
+
+The `group=1` overrides the by-name grouping so that we get a mean across all names for each gender, rather than the mean of each individual name within each gender (which would the same as the individual observations).
 
 ## Interactive
 
