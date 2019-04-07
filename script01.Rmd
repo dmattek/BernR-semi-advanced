@@ -1,0 +1,273 @@
+---
+title: "BernR semi-advanced programming tips"
+author: "Maciej (Matthew) Dobrzynski"
+output:
+  html_document:
+    toc: yes
+    df_print: paged
+  html_notebook:
+    toc: yes
+---
+
+```{r, echo=FALSE}
+require(pacman, quietly = T)
+p_load(data.table)
+p_load(ggplot2)
+p_load(plotly)
+```
+
+# RStudio topics
+
+## Working with projects
+
+RStudio projects make it straightforward to divide your work into multiple contexts, each with their own working directory, workspace, history, and source documents.
+
+RStudio projects are associated with R working directories. You can create an RStudio project:
+
+   - In a brand new directory
+   - In an existing directory where you already have R code and data
+   - By cloning a version control (Git or Subversion) repository
+   
+To create a new project use the Create Project command (available on the Projects menu and on the global toolbar).
+
+## Code formatting
+
+When working in RStudio with regular R scripts, use # to add comments to your code. Additionally, any comment line which includes at least four trailing dashes (-), equal signs (=), or pound signs (#) automatically creates a code section. For example, all of the following lines create code sections.
+
+Note that the line can start with any number of pound signs (#) so long as it ends with four or more -, =, or # characters.
+
+To navigate between code sections you can use the Jump To menu available at the bottom of the editor. You can expand the folded region by either clicking on the arrow in the gutter or on the icon that overlays the folded code.
+
+RStudio supports both automatic and user-defined **folding** for regions of code. Code folding allows you to easily show and hide blocks of code to make it easier to navigate your source file and focus on the coding task at hand.
+
+To indent or reformat the code use:
+
+   - Menu > Code > Reindent Lines (⌘I)
+   - Menu > Code > Reformat Code (⇧⌘A)
+
+## Syntax convention
+
+It's a good practice to stick to one naming convention throughout the code. A convenient convention is a so-called [camel notation](https://en.wikipedia.org/wiki/Camel_case#Programming_and_coding), where names of variables, constants, functions are constructed by capitalizing each comound of the name, e.g.:
+
+   - `calcStatsOfDF` - function to calculate stats
+   - `nIteration` - prefix `n` to indicate an integer variable
+   - `fPatientAge` - prefix `f` to indicate a float variable
+   - `sPatientName` - prefix `s` to indicate a string variable
+   - `vFileNames` - `v` for vector
+   - `lColumnNames` - `l` for a list
+
+## R notebooks
+
+This document is written as an [R Notebook](https://bookdown.org/yihui/rmarkdown/notebook.html). It allows to create publish-ready documents with text, graphics, and interactive plots. Can be saved as an html, pdf, or a Word document. 
+
+An R Notebook is a document with chunks that can be executed independently and interactively, with output visible immediately beneath the input. The text is formatted using [R Markdown](https://rmarkdown.rstudio.com/authoring_basics.html).
+
+
+# Long vs wide format
+
+## Define data
+
+```{r}
+dtBabies = data.table(name= c("Jackson Smith", "Emma Williams", "Liam Brown", "Ava Wilson"), 
+                    gender = c("M", "F", "M", "F"), 
+                    year2011= c(74.69, NA, 88.24, 81.77), 
+                    year2012=c(84.99, NA, NA, 96.45), 
+                    year2013=c(91.73, 75.74, 101.83, NA),
+                    year2014=c(95.32, 82.49, 108.23, NA),
+                    year2015=c(107.12, 93.73, 119.01, 105.65))
+dtBabies
+
+```
+
+## Summarise
+
+```{r}
+summary(dtBabies)
+```
+
+
+## Wide to long
+
+The test data frame is in the wide format. Here, we convert it to long format using function `melt`. The key is to provide the names of *identification* (parameter `id.vars`) and *measure* variables (parameter `measure.vars`). If none are provided, `melt` will try to guess them automatically, which sometimes may result in a wrong conversion. 
+
+Both variables can be provided as explicit strings with column names, or as column numbers.
+
+The original data frame contained missing values. The function `melt` has an option `na.rm=T` to omit them in the long-format table.
+
+```{r}
+
+dtBabiesLong = data.table::melt(dtBabies, 
+     id.vars = c('name', 'gender'), 
+     measure.vars = 3:7,
+     variable.name = 'year',
+     value.name = 'weight',
+     na.rm = T)
+
+dtBabiesLong
+```
+
+## Long to wide
+
+The function `dcast` from `reshape2` package converts from wide to long format. The function has a so called *formula interface* that specifies a combination of variables that uniquely identify a row.
+
+Note that because some combinations of `name + gender + year` do not exist, the `dcast` function will introduce `NAs`.
+
+```{r}
+dtBabiesWide = data.table::dcast(dtBabiesLong, 
+                name + gender ~ year, 
+                value.var = 'weight')
+
+dtBabiesWide
+
+```
+
+# Reference columns by name
+
+In the above example, you've noticed that the formula interface of `dcast` requires providing column names explicitly. Hardcoding them this way in the script is potentially dangerous, for example when column names change for some reason. A much handier way would be to store the column names somewhere at the beginning of the script, wherer it's easy to change them, and then use variables with those names in the code. 
+
+```{r}
+lCol = list()
+lCol$meas = 'weight'
+lCol$time = 'year'
+lCol$group = c('name', 'gender')
+
+lCol
+```
+
+Now we build a string from column names stored in lCol list using `paste0` function:
+
+```{r}
+sFormula = paste0(lCol$group[1], '+', lCol$group[2], '~', lCol$time)
+sFormula
+```
+
+Finally, we use the string as a formula using `as.formula` function:
+
+```{r}
+dcast(dtBabiesLong, 
+                as.formula(sFormula), 
+                value.var = lCol$meas)
+```
+
+
+# Plot with ggplot2
+
+ggPlot is a powerfull plotting package that requires data in the long format. Let's plot weight over time.
+
+## Attempt 1
+
+```{r}
+ggplot2::ggplot(dtBabiesLong, aes(x = year, y = weight)) +
+  geom_line()
+```
+
+Ups, doesn't look good... The reason being that plotting function doesn't know how to link the points. The logical way to link them is by `name` column, 
+
+## Attempt 2
+
+Here we add `group` option in the `ggplot` aesthetics (`aes`) to avoid the mistake from the above. 
+
+Also, to avoid hard-coding column names we use `aes_string` instead of `aes`. 
+
+In order to produce facets per `gender`, we use function `facet_wrap`. It uses formula interface, same as in case of `dcast`, hence we need to build the formula from s string.
+
+```{r}
+sFormula2 = paste0('~', lCol$group[2])
+sFormula2
+```
+
+
+```{r}
+p1 = ggplot2::ggplot(dtBabiesLong, aes_string(x = lCol$time, y = lCol$meas, group = lCol$group[1])) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(as.formula(sFormula2)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p1
+```
+
+## Interactive
+
+Making an interactive plot from a `ggplot` object is extremely easy. Just use `ggplotly` function from the amazing `plotly` package. The interactive plot will remain in the html document knitted from the R notebook.
+
+```{r}
+plotly::ggplotly(p1)
+```
+
+# Wrapping into functions
+
+Let's write a function to calculate statistics of a data frame. In the simplest case the function will calculate the mean of a single column of a data frame.
+
+We will expand the funciton to csalculate the mean by a group, and to calculate robust statistics, i.e. median instead of the mean.
+
+The function will need the following input parameters:
+
+   - the name of the data frame to use for calculations
+   - the name of the variable to summarise
+   - the name of the column with grouping (optional)
+   - a True or False parameter for robust stats (optional)
+   
+```{r}
+calcStats = function(inDt, inMeasVar, inGroupName = NULL, inRobust = F) {
+
+  if (inRobust) {
+    outDt = inDt[, .(medianMeas = median(get(inMeasVar))), by = inGroupName]
+  } else {
+    outDt = inDt[, .(meanMeas = mean(get(inMeasVar))), by = inGroupName]
+  }
+  
+  return(outDt)
+}
+```
+
+Since column names will be provided to our function as string parameters, we cannot hard-code them inside of the function. Therefore, we use function `get` to use the string stored in the variable `inMeasVar` as the column name.
+
+
+Calculate the mean of the `weight` column:
+
+```{r}
+calcStats(dtBabiesLong, 'weight')
+```
+
+
+Calculate the mean of the `weight` column by `name` and `gender`. Use robust stats:
+
+```{r}
+calcStats(dtBabiesLong, 'weight', inGroupName = c('name', 'gender'), inRobust = T)
+```
+
+## Documentation
+
+Once inside the function, click Menu > Code > Insert Roxygen Skeleton (Shift-Option-Command R). A pecial type of comment will be added above the function. You can add your text next to parameters.
+
+```{r}
+#' Calculates stats of a data frame
+#'
+#' @param inDt Input data table in the long format
+#' @param inMeasVar Name of the measurement column
+#' @param inGroupName Name of the grouping column (default NULL)
+#' @param inRobust If true, the function calculates median instead of the mean (default False)
+#'
+#' @return Data table with summary stats
+#' @export
+#' @import data.table
+#'
+#' @examples
+#' # example usasge 
+
+calcStats = function(inDt, inMeasVar, inGroupName = NULL, inRobust = F) {
+  
+  if (inRobust) {
+    outDt = inDt[, .(medianMeas = median(get(inMeasVar))), by = inGroupName]
+  } else {
+    outDt = inDt[, .(meanMeas = mean(get(inMeasVar))), by = inGroupName]
+  }
+  
+  return(outDt)
+}
+```
+
+
+
+
