@@ -15,7 +15,7 @@ p_load(plotly)
 
 # About
 
-This R notebook accompanies the [BernR MeetUp: Semi-advanced R programming tricks](https://www.meetup.com/Bern-R/events/xbnxlqyzgblb/).
+This R notebook accompanies [BernR MeetUp: Semi-advanced R programming tricks](https://www.meetup.com/Bern-R/events/xbnxlqyzgblb/).
 
 # Topics
 

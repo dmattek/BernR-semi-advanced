@@ -2,6 +2,8 @@
 
 This tutorial accompanies the [BernR MeetUp: Semi-advanced R programming tricks](https://www.meetup.com/Bern-R/events/xbnxlqyzgblb/).
 
+Click [here](http://macdobry.net/teaching/BernR-semiAdvanced.html) to view the HTML version.
+
 The tutorial uses following packages:
 
   - `pacman` for package loading, see [here](https://github.com/trinker/pacman),
