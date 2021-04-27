@@ -1,12 +1,9 @@
 ---
-title: "BernR semi-advanced programming tips"
-author: "Maciej (Matthew) Dobrzynski"
+title: "BernR: semi-advanced R programming tips"
+author: "Maciej (Matthew) Dobrzyński, IZB UniBern"
+date: "`r Sys.Date()`"
 output:
-  html_document:
-    toc: yes
-    df_print: paged
-  html_notebook:
-    toc: yes
+  rmdformats::downcute: default
 ---
 
 ```{r, echo=FALSE}
@@ -16,11 +13,15 @@ p_load(ggplot2)
 p_load(plotly)
 ```
 
-# RStudio topics
+# About
+
+This R notebook accompanies the [BernR MeetUp: Semi-advanced R programming tricks](https://www.meetup.com/Bern-R/events/xbnxlqyzgblb/).
+
+# Topics
 
 ## Working with projects
 
-RStudio projects make it straightforward to divide your work into multiple contexts, each with their own working directory, workspace, history, and source documents.
+[RStudio](https://www.rstudio.com/products/rstudio/) projects make it straightforward to divide your work into multiple contexts, each with their own working directory, workspace, history, and source documents.
 
 RStudio projects are associated with R working directories. You can create an RStudio project:
 
@@ -32,9 +33,9 @@ To create a new project use the Create Project command (available on the Project
 
 ## Code formatting
 
-When working in RStudio with regular R scripts, use # to add comments to your code. Additionally, any comment line which includes at least four trailing dashes (-), equal signs (=), or pound signs (#) automatically creates a code section. For example, all of the following lines create code sections.
+When working in RStudio with regular R scripts, use `#` to add comments to your code. Additionally, any comment line which includes at least four trailing dashes (`-`), equal signs (`=`), or pound signs (`#`) automatically creates a code section. For example, all of the following lines create code sections.
 
-Note that the line can start with any number of pound signs (#) so long as it ends with four or more -, =, or # characters.
+Note that the line can start with any number of pound signs (`#`) so long as it ends with four or more `-`, `=`, or `#` characters.
 
 To navigate between code sections you can use the Jump To menu available at the bottom of the editor. You can expand the folded region by either clicking on the arrow in the gutter or on the icon that overlays the folded code.
 
